@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Val's Vegan Inventory</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="phone-shell">
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><rect x="0" y="4" width="3" height="8" rx="1"/><rect x="4.5" y="2.5" width="3" height="9.5" rx="1"/><rect x="9" y="0.5" width="3" height="11.5" rx="1"/><rect x="13.5" y="0" width="2.5" height="12" rx="1" opacity="0.4"/></svg>
+        <svg width="16" height="12" viewBox="0 0 24 16" fill="white"><path d="M12 3C8.5 3 5.3 4.4 3 6.7L1 4.7C3.8 2 7.7 0 12 0s8.2 2 11 4.7l-2 2C18.7 4.4 15.5 3 12 3z"/><path d="M12 8c-2 0-3.8.8-5.1 2.1L5 8.2C6.8 6.5 9.3 5.5 12 5.5s5.2 1 7 2.7l-1.9 1.9C15.8 8.8 14 8 12 8z"/><circle cx="12" cy="14" r="2"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3.5" stroke="white" stroke-opacity="0.35"/><rect x="1" y="1" width="17" height="10" rx="3" fill="white"/><path d="M23.5 4.5v3a2 2 0 000-3z" fill="white" opacity="0.4"/></svg>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content"></div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="home">
+        <span class="nav-icon">🏠</span>
+        <span>Home</span>
+      </button>
+      <button class="nav-btn" data-tab="count">
+        <span class="nav-icon">📍</span>
+        <span>Count</span>
+      </button>
+      <button class="nav-btn" data-tab="items">
+        <span class="nav-icon">📋</span>
+        <span>Items</span>
+      </button>
+      <button class="nav-btn" data-tab="alerts">
+        <span class="nav-icon">⚠️</span>
+        <span>Alerts</span>
+      </button>
+      <button class="nav-btn" data-tab="updates">
+        <span class="nav-icon">🕐</span>
+        <span>Updates</span>
+      </button>
+    </nav>
+
+    <!-- Modal Overlay -->
+    <div id="modal-overlay"></div>
+
+    <!-- Toast -->
+    <div id="toast"></div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
