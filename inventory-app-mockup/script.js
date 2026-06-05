@@ -368,54 +368,167 @@ function renderLocationPicker() {
   </div>`;
 }
 
+let countSearchQuery = '';
+
 function selectLocation(id) {
   currentLocationId = id;
+  countSearchQuery = '';
   renderMain();
 }
 
 function renderLocationCount() {
   const loc = LOCATIONS.find(l => l.id === currentLocationId);
-  const locItems = ITEMS.filter(i => currentLocationId in i.locations);
+  const allLocItems = ITEMS.filter(i => currentLocationId in i.locations);
+  const locItems = allLocItems.filter(i =>
+    countSearchQuery === '' || i.name.toLowerCase().includes(countSearchQuery.toLowerCase())
+  );
 
   return `
-  <div class="screen-header" style="display:flex;align-items:center;gap:12px">
-    <button class="back-btn" onclick="currentLocationId=null;renderMain()">‹</button>
-    <div>
-      <div class="screen-title">${locTypeIcon(loc.type)} ${loc.name}</div>
-      <div class="screen-sub">${locItems.length} items · tap +/- to update</div>
+  <div class="count-screen-wrap">
+    <div class="count-top-bar">
+      <button class="back-btn" onclick="currentLocationId=null;countSearchQuery='';renderMain()">‹</button>
+      <div class="count-top-info">
+        <div class="screen-title">${locTypeIcon(loc.type)} ${loc.name}</div>
+        <div class="screen-sub">${allLocItems.length} items · tap to update</div>
+      </div>
     </div>
-  </div>
-  <div class="count-list">
-    ${locItems.map(item => {
-      const qty = item.locations[currentLocationId];
-      const st = statusLabel(item);
-      return `
-      <div class="count-card" id="count-card-${item.id}">
-        <div class="count-item-header">
-          <div>
-            <div class="count-item-name">${item.name}</div>
-            <div class="count-item-meta">${item.category} · ${item.unit}</div>
-          </div>
-          <span class="status-badge ${st.cls}">${st.label}</span>
-        </div>
-        <div class="count-controls">
-          <button class="qty-btn minus" onclick="adjustQty('${item.id}','${currentLocationId}',-1)">−</button>
-          <div class="qty-display" id="qty-${item.id}-${currentLocationId}">${qty}</div>
-          <button class="qty-btn plus" onclick="adjustQty('${item.id}','${currentLocationId}',1)">+</button>
-        </div>
-        <div class="quick-chips">
-          <button class="chip" onclick="setQty('${item.id}','${currentLocationId}',0)">0</button>
-          <button class="chip" onclick="setQty('${item.id}','${currentLocationId}',Math.ceil(${item.par}*0.25))">Low</button>
-          <button class="chip" onclick="setQty('${item.id}','${currentLocationId}',Math.ceil(${item.par}*0.5))">Half</button>
-          <button class="chip" onclick="setQty('${item.id}','${currentLocationId}',${item.par})">Full</button>
-        </div>
-        <div class="count-updated">Last updated: ${formatDateTime(item.lastUpdatedAt)} by ${item.lastUpdatedBy}</div>
-      </div>`;
-    }).join('')}
-  </div>
-  <div class="sticky-footer">
-    <button class="btn-primary full-width" onclick="finishCount('${currentLocationId}')">✓ Save Count</button>
+
+    <div class="count-search-wrap">
+      <input
+        class="search-input"
+        id="count-search"
+        type="text"
+        placeholder="🔍  Search items in this location..."
+        value="${countSearchQuery}"
+        oninput="filterCountItems(this.value)"
+      >
+    </div>
+
+    <div class="count-results-bar" id="count-results-bar">
+      ${locItems.length} of ${allLocItems.length} items
+    </div>
+
+    <div class="count-list" id="count-list">
+      ${renderCountCards(locItems)}
+    </div>
+
+    <div class="sticky-footer">
+      <button class="btn-primary full-width" onclick="finishCount('${currentLocationId}')">✓ Save Count</button>
+    </div>
   </div>`;
+}
+
+function renderCountCards(locItems) {
+  if (locItems.length === 0) {
+    return `<div class="empty-state">No items match your search</div>`;
+  }
+  return locItems.map(item => {
+    const qty = item.locations[currentLocationId];
+    const st = statusLabel(item);
+    const sliderMax = Math.max(item.par * 2, qty + 10, 20);
+    return `
+    <div class="count-card" id="count-card-${item.id}">
+      <div class="count-item-header">
+        <div>
+          <div class="count-item-name">${item.name}</div>
+          <div class="count-item-meta">${item.category} · ${item.unit}</div>
+        </div>
+        <span class="status-badge ${st.cls}" id="badge-${item.id}">${st.label}</span>
+      </div>
+
+      <div class="count-controls">
+        <button class="qty-btn minus" onclick="adjustQty('${item.id}','${currentLocationId}',-1)">−</button>
+        <input
+          class="qty-type-input"
+          id="qty-${item.id}-${currentLocationId}"
+          type="number"
+          min="0"
+          value="${qty}"
+          onchange="commitTypedQty('${item.id}','${currentLocationId}',this)"
+          oninput="syncSlider('${item.id}','${currentLocationId}',this.value,${sliderMax})"
+        >
+        <button class="qty-btn plus" onclick="adjustQty('${item.id}','${currentLocationId}',1)">+</button>
+      </div>
+
+      <div class="slider-wrap">
+        <span class="slider-label">0</span>
+        <input
+          class="qty-slider"
+          id="slider-${item.id}-${currentLocationId}"
+          type="range"
+          min="0"
+          max="${sliderMax}"
+          value="${qty}"
+          oninput="syncFromSlider('${item.id}','${currentLocationId}',this.value)"
+          onchange="commitSliderQty('${item.id}','${currentLocationId}',this.value)"
+        >
+        <span class="slider-label">${sliderMax}</span>
+      </div>
+
+      <div class="quick-chips">
+        <button class="chip" onclick="setQty('${item.id}','${currentLocationId}',0)">0</button>
+        <button class="chip" onclick="setQty('${item.id}','${currentLocationId}',Math.ceil(${item.par}*0.25))">Low</button>
+        <button class="chip" onclick="setQty('${item.id}','${currentLocationId}',Math.ceil(${item.par}*0.5))">Half</button>
+        <button class="chip" onclick="setQty('${item.id}','${currentLocationId}',${item.par})">Full</button>
+      </div>
+
+      <div class="count-updated" id="updated-${item.id}">Last updated: ${formatDateTime(item.lastUpdatedAt)} by ${item.lastUpdatedBy}</div>
+    </div>`;
+  }).join('');
+}
+
+function filterCountItems(query) {
+  countSearchQuery = query;
+  const allLocItems = ITEMS.filter(i => currentLocationId in i.locations);
+  const filtered = allLocItems.filter(i =>
+    query === '' || i.name.toLowerCase().includes(query.toLowerCase())
+  );
+  const list = document.getElementById('count-list');
+  const bar = document.getElementById('count-results-bar');
+  if (list) list.innerHTML = renderCountCards(filtered);
+  if (bar) bar.textContent = `${filtered.length} of ${allLocItems.length} items`;
+}
+
+// Sync the number input → slider (while typing)
+function syncSlider(itemId, locId, val, sliderMax) {
+  const slider = document.getElementById(`slider-${itemId}-${locId}`);
+  if (slider) slider.value = Math.min(Math.max(0, parseInt(val) || 0), sliderMax);
+}
+
+// Sync the slider → number input (while dragging, live preview only)
+function syncFromSlider(itemId, locId, val) {
+  const input = document.getElementById(`qty-${itemId}-${locId}`);
+  if (input) input.value = val;
+}
+
+// Commit when slider drag ends
+function commitSliderQty(itemId, locId, val) {
+  const newQty = Math.max(0, parseInt(val) || 0);
+  const item = ITEMS.find(i => i.id === itemId);
+  const oldQty = item.locations[locId] || 0;
+  item.locations[locId] = newQty;
+  const input = document.getElementById(`qty-${itemId}-${locId}`);
+  if (input) input.value = newQty;
+  if (oldQty !== newQty) pushUpdate(item.name, locName(locId), oldQty, newQty, item.unit);
+  item.lastUpdatedBy = 'Najmi';
+  item.lastUpdatedAt = new Date().toISOString();
+  refreshCountCardMeta(item);
+}
+
+// Commit when typed input loses focus or Enter pressed
+function commitTypedQty(itemId, locId, inputEl) {
+  const newQty = Math.max(0, parseInt(inputEl.value) || 0);
+  inputEl.value = newQty;
+  const item = ITEMS.find(i => i.id === itemId);
+  const oldQty = item.locations[locId] || 0;
+  item.locations[locId] = newQty;
+  const sliderMax = Math.max(item.par * 2, newQty + 10, 20);
+  const slider = document.getElementById(`slider-${itemId}-${locId}`);
+  if (slider) { slider.max = sliderMax; slider.value = newQty; }
+  if (oldQty !== newQty) pushUpdate(item.name, locName(locId), oldQty, newQty, item.unit);
+  item.lastUpdatedBy = 'Najmi';
+  item.lastUpdatedAt = new Date().toISOString();
+  refreshCountCardMeta(item);
 }
 
 function adjustQty(itemId, locId, delta) {
@@ -423,12 +536,15 @@ function adjustQty(itemId, locId, delta) {
   const oldQty = item.locations[locId] || 0;
   const newQty = Math.max(0, oldQty + delta);
   item.locations[locId] = newQty;
-  const el = document.getElementById(`qty-${itemId}-${locId}`);
-  if (el) el.textContent = newQty;
+  const input = document.getElementById(`qty-${itemId}-${locId}`);
+  if (input) input.value = newQty;
+  const sliderMax = Math.max(item.par * 2, newQty + 10, 20);
+  const slider = document.getElementById(`slider-${itemId}-${locId}`);
+  if (slider) { slider.max = sliderMax; slider.value = newQty; }
   if (oldQty !== newQty) pushUpdate(item.name, locName(locId), oldQty, newQty, item.unit);
   item.lastUpdatedBy = 'Najmi';
   item.lastUpdatedAt = new Date().toISOString();
-  updateCountCardStatus(itemId);
+  refreshCountCardMeta(item);
 }
 
 function setQty(itemId, locId, newQty) {
@@ -436,28 +552,34 @@ function setQty(itemId, locId, newQty) {
   const oldQty = item.locations[locId] || 0;
   newQty = Math.max(0, Math.round(newQty));
   item.locations[locId] = newQty;
-  const el = document.getElementById(`qty-${itemId}-${locId}`);
-  if (el) el.textContent = newQty;
+  const input = document.getElementById(`qty-${itemId}-${locId}`);
+  if (input) input.value = newQty;
+  const sliderMax = Math.max(item.par * 2, newQty + 10, 20);
+  const slider = document.getElementById(`slider-${itemId}-${locId}`);
+  if (slider) { slider.max = sliderMax; slider.value = newQty; }
   if (oldQty !== newQty) pushUpdate(item.name, locName(locId), oldQty, newQty, item.unit);
   item.lastUpdatedBy = 'Najmi';
   item.lastUpdatedAt = new Date().toISOString();
-  updateCountCardStatus(itemId);
+  refreshCountCardMeta(item);
 }
 
+function refreshCountCardMeta(item) {
+  const st = statusLabel(item);
+  const badge = document.getElementById(`badge-${item.id}`);
+  if (badge) { badge.className = `status-badge ${st.cls}`; badge.textContent = st.label; }
+  const updated = document.getElementById(`updated-${item.id}`);
+  if (updated) updated.textContent = `Last updated: ${formatDateTime(item.lastUpdatedAt)} by ${item.lastUpdatedBy}`;
+}
+
+// kept for backwards compat (used by modal)
 function updateCountCardStatus(itemId) {
   const item = ITEMS.find(i => i.id === itemId);
-  const card = document.getElementById(`count-card-${itemId}`);
-  if (!card) return;
-  const st = statusLabel(item);
-  const badge = card.querySelector('.status-badge');
-  if (badge) {
-    badge.className = `status-badge ${st.cls}`;
-    badge.textContent = st.label;
-  }
+  refreshCountCardMeta(item);
 }
 
 function finishCount(locId) {
   currentLocationId = null;
+  countSearchQuery = '';
   showToast('Count saved for ' + locName(locId));
   renderMain();
 }
